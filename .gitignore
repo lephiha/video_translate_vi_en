@@ -1,0 +1,118 @@
+# ============================================================
+# Secrets / config
+# ============================================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*_cookies.txt
+www.douyin.com_cookies.txt
+
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+env/
+ENV/
+
+# ============================================================
+# IDEs / editors
+# ============================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+
+# ============================================================
+# Media output / inputs (large binaries — keep out of git)
+# ============================================================
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.avi
+*.flv
+*.wav
+*.mp3
+*.flac
+*.aac
+*.m4a
+*.ogg
+*.opus
+
+# ============================================================
+# Pipeline working / output directories
+# ============================================================
+output/
+downloads/
+input/
+
+# ============================================================
+# AI / dev-tool local state
+# ============================================================
+.claude/
+.codegraph/
+.playwright-mcp/
+.cursor/
+.aider*
+.continue/
+.auto-translate/
+
+# ============================================================
+# Personal job lists (templates committed as *.example.json)
+# ============================================================
+list_video.json
+get_content_url.json
+video_links.txt
+scripts/
+
+# ============================================================
+# Legacy local folders
+# ============================================================
+Auto Translade video/
+client_secrets.json
+youtube_token.pickle
+apike.txt
+cookies.txt
+first_run_setup.py
+desktop.py
+app.spec
+installer.iss
+
+# AI models
+models/
+bin/

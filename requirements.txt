@@ -1,0 +1,36 @@
+# Web server
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+
+# Desktop UI
+pywebview
+
+# Audio/video
+pydub
+imageio-ffmpeg
+
+# ASR
+groq
+sherpa-onnx
+
+# Translation (API providers, optional — chỉ cần key tương ứng nếu dùng)
+openai
+google-generativeai
+requests
+
+# Translation (offline fallback)
+transformers
+torch
+sentencepiece
+
+# Vocal separation
+demucs
+soundfile
+
+# TTS
+vieneu
+
+# ── Build installer (Windows, không cần cho lúc chạy dev) ──
+pyinstaller

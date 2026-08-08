@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dub EN→VI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#0b0d10; --surface:#12151a; --surface2:#191d24;
+    --border:#252b34; --accent:#5eead4; --accent-dim:#173a35;
+    --text:#e6e9ee; --muted:#7a8494;
+    --success:#5eead4; --warn:#fbbf24; --error:#fb7185;
+    --radius:12px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;padding:48px 16px 100px;}
+
+  header{text-align:center;margin-bottom:40px;}
+  header .eyebrow{font-family:'JetBrains Mono',monospace;font-size:0.72rem;letter-spacing:0.18em;
+    color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-family:'Space Grotesk',sans-serif;font-size:2.1rem;font-weight:700;letter-spacing:-0.02em;}
+  header p{color:var(--muted);margin-top:8px;font-size:0.9rem;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:26px;width:100%;max-width:680px;margin-bottom:16px;}
+  .card-title{font-family:'JetBrains Mono',monospace;font-size:0.72rem;font-weight:500;color:var(--muted);
+    text-transform:uppercase;letter-spacing:0.1em;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+  .card-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  /* Dropzone */
+  #dropzone{border:1.5px dashed var(--border);border-radius:10px;padding:36px 20px;text-align:center;
+    cursor:pointer;transition:all .15s;position:relative;}
+  #dropzone:hover,#dropzone.drag{border-color:var(--accent);background:var(--accent-dim);}
+  #dropzone .icon{font-size:1.8rem;margin-bottom:10px;}
+  #dropzone .main-txt{font-size:0.92rem;font-weight:500;}
+  #dropzone .sub-txt{font-size:0.78rem;color:var(--muted);margin-top:4px;}
+  #file-input{display:none;}
+  #file-picked{display:none;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);
+    border-radius:8px;border:1px solid var(--border);font-size:0.85rem;}
+  #file-picked .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #file-picked .clear{cursor:pointer;color:var(--muted);}
+  #file-picked .clear:hover{color:var(--error);}
+  #upload-progress{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden;display:none;}
+  #upload-progress .bar{height:100%;background:var(--accent);width:0%;transition:width .2s;}
+
+  .field{margin-bottom:16px;}
+  label{display:block;font-size:0.76rem;font-weight:500;color:var(--muted);text-transform:uppercase;
+    letter-spacing:0.05em;margin-bottom:7px;}
+  select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);
+    font-family:'Inter',sans-serif;font-size:0.9rem;padding:10px 12px;outline:none;}
+  select:focus{border-color:var(--accent);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .mode-toggle{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:12px;}
+  .mode-btn{flex:1;padding:9px 0;font-size:0.85rem;font-weight:500;background:transparent;border:none;
+    color:var(--muted);cursor:pointer;transition:all .15s;}
+  .mode-btn.active{background:var(--accent);color:#0b0d10;}
+  .mode-desc{font-size:0.78rem;color:var(--muted);}
+
+  .voice-tabs{display:flex;gap:8px;margin-bottom:12px;}
+  .voice-tab{padding:6px 16px;border-radius:20px;font-size:0.82rem;font-weight:500;cursor:pointer;
+    border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s;}
+  .voice-tab.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+  .voice-note{font-size:0.75rem;color:var(--muted);margin-top:8px;}
+  .voice-note a{color:var(--accent);text-decoration:none;}
+
+  .toggle-wrap{display:flex;align-items:center;gap:10px;font-size:0.88rem;}
+  .toggle{width:36px;height:20px;background:var(--border);border-radius:20px;position:relative;
+    cursor:pointer;transition:background .2s;flex-shrink:0;}
+  .toggle.on{background:var(--accent);}
+  .toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#0b0d10;
+    top:3px;left:3px;transition:left .2s;}
+  .toggle.on::after{left:19px;background:#0b0d10;}
+  .sub-style-row{display:none;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .sub-style-row.visible{display:flex;}
+  .style-chip{padding:5px 14px;border-radius:20px;font-size:0.78rem;border:1px solid var(--border);
+    background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .style-chip.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+
+  .btn{width:100%;padding:13px;border:none;border-radius:8px;font-family:'Inter',sans-serif;
+    font-size:0.95rem;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;
+    background:var(--accent);color:#0b0d10;}
+  .btn:hover{opacity:0.88;} .btn:active{transform:scale(0.98);} .btn:disabled{opacity:0.3;cursor:not-allowed;}
+  .btn.secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+
+  .stepper-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:22px 26px;width:100%;max-width:680px;margin-bottom:16px;display:none;}
+  .stepper-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+  .stepper-title{font-size:0.88rem;font-weight:600;}
+  .stepper-status{font-size:0.78rem;color:var(--accent);display:flex;align-items:center;gap:6px;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.2s infinite;}
+  .stepper-row{display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:4px;}
+  .step-node{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:78px;position:relative;}
+  .step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--bg);
+    color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:0.78rem;
+    font-weight:600;transition:all .25s;z-index:1;}
+  .step-label{font-size:0.68rem;color:var(--muted);margin-top:6px;text-align:center;white-space:nowrap;}
+  .step-line{position:absolute;top:16px;left:50%;width:100%;height:2px;background:var(--border);z-index:0;}
+  .step-node:last-child .step-line{display:none;}
+  .step-node.done .step-circle{border-color:var(--success);background:var(--success);color:#0b0d10;}
+  .step-node.done .step-label{color:var(--success);}
+  .step-node.done .step-line{background:var(--success);}
+  .step-node.active .step-circle{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);
+    animation:stepPulse 1.4s infinite;}
+  .step-node.active .step-label{color:var(--accent);font-weight:600;}
+  @keyframes stepPulse{0%,100%{box-shadow:0 0 0 0 rgba(94,234,212,.4);}50%{box-shadow:0 0 0 6px rgba(94,234,212,0);}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .log-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    width:100%;max-width:680px;overflow:hidden;}
+  .log-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .log-header span{font-size:0.74rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;flex:1;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+  .dot.running{background:var(--accent);animation:pulse 1.2s infinite;}
+  .dot.done{background:var(--success);} .dot.error{background:var(--error);}
+  #log-box{font-family:'JetBrains Mono',monospace;font-size:0.74rem;line-height:1.7;padding:14px 18px;
+    height:260px;overflow-y:auto;}
+  .log-line.WARNING{color:var(--warn);} .log-line.ERROR{color:var(--error);}
+  .step-tag{display:inline-block;font-size:0.66rem;font-weight:600;padding:1px 6px;border-radius:4px;
+    margin-right:6px;background:var(--accent-dim);color:var(--accent);}
+
+  .result-panel{display:none;background:var(--surface);border:1px solid var(--success);border-radius:var(--radius);
+    padding:24px;width:100%;max-width:680px;margin-top:16px;}
+  .result-panel.visible{display:block;}
+  .result-title{font-size:0.9rem;font-weight:600;color:var(--success);margin-bottom:12px;}
+  .result-meta{font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:2;}
+  .result-meta strong{color:var(--text);}
+  video{width:100%;border-radius:8px;background:#000;margin-bottom:14px;max-height:400px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Local video · English → Vietnamese</div>
+  <h1>Video Dubbing</h1>
+  <p>Kéo thả video, cấu hình giọng đọc, chạy lồng tiếng offline-first.</p>
+</header>
+
+<!-- Upload -->
+<div class="card">
+  <div class="card-title">Video nguồn</div>
+  <div id="dropzone" onclick="document.getElementById('file-input').click()">
+    <div class="icon">⬆</div>
+    <div class="main-txt">Kéo thả video vào đây, hoặc bấm để chọn file</div>
+    <div class="sub-txt">mp4 · mov · mkv · avi · webm</div>
+  </div>
+  <input type="file" id="file-input" accept=".mp4,.mov,.mkv,.avi,.webm" />
+  <div id="file-picked">
+    <span>🎬</span><span class="name" id="file-name"></span>
+    <span class="clear" onclick="clearFile()">✕</span>
+  </div>
+  <div id="upload-progress"><div class="bar" id="upload-bar"></div></div>
+</div>
+
+<!-- Chế độ dịch -->
+<div class="card">
+  <div class="card-title">Chế độ dịch</div>
+  <div class="mode-toggle">
+    <button class="mode-btn" id="mode-offline" onclick="setMode('offline')">🔌 Offline (NLLB)</button>
+    <button class="mode-btn active" id="mode-api" onclick="setMode('api')">🤖 AI (OpenAI→Gemini→Groq→OpenRouter)</button>
+  </div>
+  <p class="mode-desc" id="mode-desc">Dịch bằng AI, tự động thử lần lượt các provider nếu lỗi.</p>
+</div>
+
+<!-- Giọng đọc & âm thanh -->
+<div class="card">
+  <div class="card-title">Giọng đọc & âm thanh</div>
+  <div class="voice-tabs">
+    <div class="voice-tab" id="tab-male" onclick="setGender('male')">Nam</div>
+    <div class="voice-tab active" id="tab-female" onclick="setGender('female')">Nữ</div>
+  </div>
+  <div class="field">
+    <select id="voice-select"><option value="">⏳ Đang tải danh sách giọng...</option></select>
+    <p class="voice-note"><a href="#" onclick="previewVoice(); return false;" id="voice-preview-link">🔊 Nghe thử giọng đang chọn</a></p>
+  </div>
+  <div class="field">
+    <label>Nhạc nền</label>
+    <select id="bg-select">
+      <option value="demucs">Tách bằng AI (Demucs) — chuẩn nhất</option>
+      <option value="duck">Duck âm gốc — nhanh</option>
+      <option value="none">Tắt — chỉ giọng đọc</option>
+    </select>
+  </div>
+</div>
+
+<!-- Phụ đề -->
+<div class="card">
+  <div class="card-title">Phụ đề</div>
+  <div class="toggle-wrap">
+    <div class="toggle" id="sub-toggle" onclick="toggleSub()"></div>
+    <span>Burn phụ đề vào video</span>
+  </div>
+  <div class="sub-style-row" id="sub-style-row">
+    <button class="style-chip active" data-style="tiktok" onclick="setSubStyle(this)">TikTok (đậm)</button>
+    <button class="style-chip" data-style="news" onclick="setSubStyle(this)">Tin tức</button>
+    <button class="style-chip" data-style="clean" onclick="setSubStyle(this)">Clean</button>
+  </div>
+</div>
+
+<!-- Run -->
+<div style="width:100%;max-width:680px;margin-bottom:16px;">
+  <button class="btn" id="run-btn" onclick="runPipeline()" disabled>▶ Chạy lồng tiếng</button>
+</div>
+
+<!-- Stepper -->
+<div class="stepper-card" id="stepper-card">
+  <div class="stepper-header">
+    <span class="stepper-title">Trạng thái xử lý</span>
+    <span class="stepper-status"><span class="live-dot"></span><span id="stepper-status-text">Đang chạy...</span></span>
+  </div>
+  <div class="stepper-row" id="stepper-row"></div>
+</div>
+
+<!-- Log -->
+<div class="log-card">
+  <div class="log-header"><span>Log</span><div class="dot" id="dot"></div></div>
+  <div id="log-box"></div>
+</div>
+
+<!-- Result -->
+<div class="result-panel" id="result-panel">
+  <div class="result-title">✅ Hoàn tất</div>
+  <div class="result-meta" id="result-meta"></div>
+  <video id="preview-video" controls style="display:none"></video>
+  <button class="btn secondary" id="download-btn" style="display:none" onclick="downloadVideo()">⬇ Tải video về máy</button>
+</div>
+
+<script>
+let ws = null;
+let fileId = null;
+let translateMode = 'api';
+let voiceGender = 'female';
+let burnSub = false;
+let subStyle = 'tiktok';
+let ALL_VOICES = [];
+
+const PIPELINE_STEPS = [
+  { key: 1, label: 'Tách âm' },
+  { key: 2, label: 'Tách nhạc nền' },
+  { key: 3, label: 'ASR' },
+  { key: 4, label: 'Dịch thuật' },
+  { key: 5, label: 'TTS giọng đọc' },
+  { key: 6, label: 'Ghép audio' },
+  { key: 7, label: 'Ghép video' },
+];
+
+function renderStepper() {
+  const row = document.getElementById('stepper-row');
+  row.innerHTML = '';
+  PIPELINE_STEPS.forEach((s, i) => {
+    const node = document.createElement('div');
+    node.className = 'step-node';
+    node.dataset.key = s.key;
+    node.innerHTML = `<div class="step-circle">${i+1}</div><div class="step-label">${s.label}</div><div class="step-line"></div>`;
+    row.appendChild(node);
+  });
+}
+
+function updateStepperFromLog(message) {
+  const m = message.match(/STEP\s+(\d+)/i);
+  if (!m) return;
+  const key = Math.min(parseInt(m[1]), 7);
+  document.getElementById('stepper-card').style.display = 'block';
+  document.querySelectorAll('.step-node').forEach(node => {
+    const nodeKey = parseInt(node.dataset.key);
+    node.classList.remove('active', 'done');
+    if (nodeKey < key) node.classList.add('done');
+    else if (nodeKey === key) node.classList.add('active');
+  });
+  const label = PIPELINE_STEPS.find(s => s.key === key)?.label || '';
+  document.getElementById('stepper-status-text').textContent = `STEP ${key} — ${label}`;
+}
+
+function markStepperDone() {
+  document.querySelectorAll('.step-node').forEach(n => { n.classList.add('done'); n.classList.remove('active'); });
+  document.getElementById('stepper-status-text').textContent = 'Hoàn tất';
+}
+
+// ===== Upload =====
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+
+['dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  document.getElementById('dropzone').style.display = 'none';
+  const picked = document.getElementById('file-picked');
+  picked.style.display = 'flex';
+  document.getElementById('file-name').textContent = `${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+
+  const progWrap = document.getElementById('upload-progress');
+  const bar = document.getElementById('upload-bar');
+  progWrap.style.display = 'block';
+  bar.style.width = '0%';
+
+  const xhr = new XMLHttpRequest();
+  const form = new FormData();
+  form.append('file', file);
+
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) bar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+  };
+  xhr.onload = () => {
+    try {
+      const data = JSON.parse(xhr.responseText);
+      if (data.success) {
+        fileId = data.file_id;
+        document.getElementById('run-btn').disabled = false;
+        bar.style.width = '100%';
+      } else {
+        alert(data.message || 'Upload thất bại');
+        clearFile();
+      }
+    } catch (e) { alert('Upload lỗi: phản hồi server không hợp lệ.'); clearFile(); }
+  };
+  xhr.onerror = () => { alert('Upload lỗi kết nối.'); clearFile(); };
+  xhr.open('POST', '/upload');
+  xhr.send(form);
+}
+
+function clearFile() {
+  fileId = null;
+  document.getElementById('dropzone').style.display = 'block';
+  document.getElementById('file-picked').style.display = 'none';
+  document.getElementById('upload-progress').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  document.getElementById('run-btn').disabled = true;
+}
+
+// ===== Voices =====
+async function loadVoices() {
+  const sel = document.getElementById('voice-select');
+  try {
+    const res = await fetch('/voices');
+    ALL_VOICES = await res.json();
+    renderVoices(voiceGender);
+  } catch (e) {
+    sel.innerHTML = '<option value="">Lỗi tải giọng: ' + e.message + '</option>';
+  }
+}
+
+function renderVoices(gender) {
+  const sel = document.getElementById('voice-select');
+  sel.innerHTML = '';
+  const list = ALL_VOICES.filter(v => v.gender === gender);
+  if (!list.length) { sel.innerHTML = `<option value="">Không có giọng ${gender === 'male' ? 'nam' : 'nữ'}</option>`; return; }
+  list.sort((a, b) => (a.kind === 'custom' ? -1 : 0) - (b.kind === 'custom' ? -1 : 0));
+  list.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.voice_id;
+    opt.dataset.sampleId = v.sample_id;
+    opt.textContent = v.kind === 'custom' ? `⭐ ${v.label}` : v.label;
+    sel.appendChild(opt);
+  });
+  const def = list.find(v => v.is_default);
+  if (def) sel.value = def.voice_id;
+}
+
+function setGender(gender) {
+  voiceGender = gender;
+  document.getElementById('tab-male').classList.toggle('active', gender === 'male');
+  document.getElementById('tab-female').classList.toggle('active', gender === 'female');
+  renderVoices(gender);
+}
+
+let _previewAudio = null;
+function previewVoice() {
+  const sel = document.getElementById('voice-select');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.dataset.sampleId) return;
+  const link = document.getElementById('voice-preview-link');
+  const original = link.textContent;
+  link.textContent = '⏳ Đang tạo mẫu...';
+  if (_previewAudio) { _previewAudio.pause(); _previewAudio = null; }
+  _previewAudio = new Audio(`/voices/sample/${encodeURIComponent(opt.dataset.sampleId)}`);
+  _previewAudio.onended = () => link.textContent = original;
+  _previewAudio.onerror = () => { link.textContent = original; alert('Không tạo được audio mẫu.'); };
+  _previewAudio.play().catch(() => link.textContent = original);
+}
+
+// ===== Config toggles =====
+function setMode(mode) {
+  translateMode = mode;
+  document.getElementById('mode-offline').classList.toggle('active', mode === 'offline');
+  document.getElementById('mode-api').classList.toggle('active', mode === 'api');
+  document.getElementById('mode-desc').textContent = mode === 'offline'
+    ? 'Chạy offline bằng NLLB, không cần API key. Chất lượng vừa, không giới hạn.'
+    : 'Dịch bằng AI, tự động thử lần lượt các provider nếu lỗi. Cần khai API key trong .env.';
+}
+
+function toggleSub() {
+  burnSub = !burnSub;
+  document.getElementById('sub-toggle').classList.toggle('on', burnSub);
+  document.getElementById('sub-style-row').classList.toggle('visible', burnSub);
+}
+
+function setSubStyle(el) {
+  document.querySelectorAll('.style-chip').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  subStyle = el.dataset.style;
+}
+
+// ===== Run =====
+function runPipeline() {
+  if (!fileId) { alert('Chưa chọn video!'); return; }
+  const voiceId = document.getElementById('voice-select').value;
+  if (!voiceId) { alert('Chưa có giọng đọc khả dụng.'); return; }
+
+  clearUI();
+  document.getElementById('run-btn').disabled = true;
+  setDot('running');
+
+  if (ws) ws.close();
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/run`);
+  ws.onopen = () => ws.send(JSON.stringify({
+    file_id: fileId,
+    source_lang: 'en',
+    voice_id: voiceId,
+    bg: document.getElementById('bg-select').value,
+    translate_mode: translateMode,
+    burn_sub: burnSub,
+    sub_style: subStyle,
+  }));
+  ws.onmessage = handleMessage;
+  ws.onerror = () => { setDot('error'); document.getElementById('run-btn').disabled = false; appendLog('ERROR', 'WebSocket lỗi kết nối.'); };
+  ws.onclose = e => {
+    if (e.code !== 1000 && e.code !== 1001) {
+      setDot('error');
+      document.getElementById('run-btn').disabled = false;
+      appendLog('WARNING', `⚠ Kết nối bị đóng (code ${e.code}).`);
+    }
+  };
+}
+
+function handleMessage(e) {
+  const data = JSON.parse(e.data);
+  if (data.type === 'ping') return;
+  if (data.type === 'log') appendLog(data.level, data.message);
+  else if (data.type === 'done') { setDot('done'); markStepperDone(); document.getElementById('run-btn').disabled = false; showResult(data); }
+  else if (data.type === 'error') { setDot('error'); document.getElementById('run-btn').disabled = false; appendLog('ERROR', data.message); }
+}
+
+function showResult(data) {
+  document.getElementById('result-meta').innerHTML =
+    `<strong>${data.segments}</strong> segments &nbsp;·&nbsp; ${data.duration}s gốc → <strong>${data.vi_duration}s</strong> VI &nbsp;·&nbsp; ⏱ <strong>${data.time}s</strong>`;
+  if (data.video_url) {
+    const vid = document.getElementById('preview-video');
+    vid.src = data.video_url; vid.style.display = 'block';
+    const btn = document.getElementById('download-btn');
+    btn.style.display = 'block'; btn._url = data.video_url;
+  }
+  document.getElementById('result-panel').classList.add('visible');
+}
+
+function downloadVideo() {
+  const btn = document.getElementById('download-btn');
+  const relPath = btn._url.replace(/^\/output\//, '');
+  window.open(`/download?path=${encodeURIComponent(relPath)}`, '_blank');
+}
+
+function appendLog(level, message) {
+  const box = document.getElementById('log-box');
+  const line = document.createElement('div');
+  line.className = `log-line ${level}`;
+  line.innerHTML = message.replace(/(STEP [\d.]+\w*:?)/g, '<span class="step-tag">$1</span>');
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+  updateStepperFromLog(message);
+}
+
+function setDot(s) { document.getElementById('dot').className = 'dot ' + s; }
+
+function clearUI() {
+  document.getElementById('log-box').innerHTML = '';
+  document.getElementById('result-panel').classList.remove('visible');
+  document.getElementById('preview-video').style.display = 'none';
+  document.getElementById('preview-video').src = '';
+  document.getElementById('download-btn').style.display = 'none';
+}
+
+renderStepper();
+loadVoices();
+</script>
+</body>
+</html>
