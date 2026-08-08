@@ -249,7 +249,17 @@ async def _prewarm_vieneu_on_startup():
             logging.getLogger("server").warning(f"Prewarm VieNeu thất bại: {e}")
     threading.Thread(target=_warm, daemon=True).start()
 
-
+@app.on_event("startup")
+async def _cleanup_old_outputs_on_startup():
+    def _clean():
+        try:
+            from pipeline import cleanup_old_outputs
+            cleanup_old_outputs(OUTPUT_DIR, keep_hours=2.0)
+            logging.getLogger("server").info("Đã dọn output cũ lúc khởi động.")
+        except Exception as e:
+            logging.getLogger("server").warning(f"Dọn output cũ thất bại: {e}")
+    threading.Thread(target=_clean, daemon=True).start()
+    
 if __name__ == "__main__":
     uvicorn.run("server:app", host="localhost", port=8080, reload=False,
                 ws_ping_interval=60, ws_ping_timeout=None, timeout_keep_alive=3600)

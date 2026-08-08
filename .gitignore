@@ -30,6 +30,8 @@ htmlcov/
 venv/
 env/
 ENV/
+docs/
+installer_output/
 
 # ============================================================
 # IDEs / editors

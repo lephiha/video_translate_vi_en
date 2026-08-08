@@ -359,3 +359,39 @@ def run_pipeline(
     logger.info(f"  Time:      {elapsed:.1f}s")
     logger.info("=" * 60)
     return report
+
+def cleanup_old_outputs(output_dir: str, keep_hours: float = 2.0) -> None:
+    """Xoá folder output cũ hơn keep_hours giờ, dựa vào mtime của
+    dubbed_video.mp4 bên trong (không dùng mtime folder — Windows tự làm
+    mới mtime folder mỗi khi có file con bị ghi/xoá)."""
+    import shutil
+    now = time.time()
+    cutoff = now - keep_hours * 3600
+
+    if not os.path.isdir(output_dir):
+        return
+
+    for folder in os.listdir(output_dir):
+        folder_path = os.path.join(output_dir, folder)
+        if not os.path.isdir(folder_path):
+            continue
+
+        reference_time = None
+        video_path = os.path.join(folder_path, "dubbed_video.mp4")
+        if os.path.exists(video_path):
+            reference_time = os.path.getmtime(video_path)
+        else:
+            report_path = os.path.join(folder_path, "report.json")
+            if os.path.exists(report_path):
+                reference_time = os.path.getmtime(report_path)
+            else:
+                reference_time = os.path.getmtime(folder_path)
+
+        if reference_time > cutoff:
+            continue
+
+        try:
+            shutil.rmtree(folder_path, ignore_errors=True)
+            logger.info(f"Auto-cleanup: removed {folder_path}")
+        except Exception as e:
+            logger.warning(f"Auto-cleanup failed: {folder_path} — {e}")

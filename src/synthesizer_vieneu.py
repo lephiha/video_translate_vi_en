@@ -16,6 +16,7 @@ GHI CHÚ TRIỂN KHAI:
 """
 import logging
 import os
+import sys
 
 logger = logging.getLogger("synthesizer_vieneu")
 
@@ -88,13 +89,35 @@ def _resolve_ref_audio_path(rel_or_abs: str) -> str:
         return rel_or_abs
     if os.path.isabs(rel_or_abs):
         return rel_or_abs
+
+    candidates = []
+
     app_dir = os.environ.get("APP_DATA_DIR")
     if app_dir:
-        candidate = os.path.join(app_dir, rel_or_abs)
+        candidates.append(os.path.join(app_dir, rel_or_abs))
+
+    # App đã đóng gói (PyInstaller) — data được giải nén vào _MEIPASS
+    # (onedir mode: chính là thư mục _internal cạnh file exe).
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(os.path.join(meipass, rel_or_abs))
+
+    # Cùng thư mục chứa file .exe (phòng trường hợp datas đặt sai gốc).
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates.append(os.path.join(exe_dir, rel_or_abs))
+        candidates.append(os.path.join(exe_dir, "_internal", rel_or_abs))
+
+    # Chạy dev (chưa đóng gói) — dựa theo vị trí file source.
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.normpath(os.path.join(here, "..", rel_or_abs)))
+
+    for candidate in candidates:
         if os.path.exists(candidate):
             return candidate
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.normpath(os.path.join(here, "..", rel_or_abs))
+
+    logger.warning(f"Không tìm thấy ref_audio ở bất kỳ candidate nào: {candidates}")
+    return candidates[-1]
 
 
 def list_custom_voices() -> list[tuple[str, str, str]]:

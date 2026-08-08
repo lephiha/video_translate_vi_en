@@ -14,6 +14,14 @@
     --success:#5eead4; --warn:#fbbf24; --error:#fb7185;
     --radius:12px;
   }
+
+  [data-theme="light"]{
+    --bg:#f5f6f8; --surface:#ffffff; --surface2:#eef0f4;
+    --border:#dde1e8; --accent:#0d9488; --accent-dim:#e6fbf7;
+    --text:#141618; --muted:#6b7280;
+    --success:#0d9488; --warn:#d97706; --error:#dc2626;
+  }
+  body{transition:background .2s, color .2s;}
   body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;
     display:flex;flex-direction:column;align-items:center;padding:48px 16px 100px;}
 
@@ -133,9 +141,15 @@
 <body>
 
 <header>
+  <div style="position:fixed;top:16px;right:16px;z-index:50;">
+    <button id="theme-btn" onclick="toggleTheme()" title="Chuyển sáng/tối"
+      style="width:38px;height:38px;border-radius:50%;background:var(--surface);
+      border:1px solid var(--border);cursor:pointer;font-size:1.05rem;
+      display:flex;align-items:center;justify-content:center;">🌙</button>
+  </div>
   <div class="eyebrow">Local video · English → Vietnamese</div>
-  <h1>Video Dubbing</h1>
-  <p>Kéo thả video, cấu hình giọng đọc, chạy lồng tiếng offline-first.</p>
+  <h1>Video Dubbing LPH</h1>
+  <p>Kéo thả video, cấu hình giọng đọc, chạy lồng tiếng offline by LPH.</p>
 </header>
 
 <!-- Upload -->
@@ -483,6 +497,22 @@ function clearUI() {
   document.getElementById('preview-video').src = '';
   document.getElementById('download-btn').style.display = 'none';
 }
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') !== 'light';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-btn').textContent = isDark ? '☀️' : '🌙';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('theme-btn').textContent = saved === 'dark' ? '🌙' : '☀️';
+}
+
+initTheme();
 
 renderStepper();
 loadVoices();
