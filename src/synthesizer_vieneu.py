@@ -121,9 +121,10 @@ def _resolve_ref_audio_path(rel_or_abs: str) -> str:
 
 
 def list_custom_voices() -> list[tuple[str, str, str]]:
-    """Đọc VIENEU_CUSTOM_VOICES — format 'key:gender:path,key2:gender2:path2'."""
+    """Đọc voice khai trong env và tự tìm mọi file WAV trong thư mục voices."""
     raw = _cfg("VIENEU_CUSTOM_VOICES", "") or ""
     result = []
+    seen_keys = set()
     for entry in raw.split(","):
         entry = entry.strip()
         if not entry or ":" not in entry:
@@ -143,9 +144,67 @@ def list_custom_voices() -> list[tuple[str, str, str]]:
         ref_path = _resolve_ref_audio_path(path.strip())
         if os.path.exists(ref_path):
             result.append((key, gender, ref_path))
+            seen_keys.add(key.casefold())
         else:
             logger.warning(f"Giọng custom '{key}' không tìm thấy file: {ref_path}")
+
+    for wav_path in _discover_voice_files():
+        key = os.path.splitext(os.path.basename(wav_path))[0]
+        if key.casefold() in seen_keys:
+            continue
+        result.append((key, _infer_custom_gender(key), wav_path))
+        seen_keys.add(key.casefold())
     return result
+
+
+def _voice_directories() -> list[str]:
+    """Các thư mục voice có thể ghi bởi người dùng hoặc bundle bởi PyInstaller."""
+    candidates = []
+    app_dir = os.environ.get("APP_DATA_DIR")
+    if app_dir:
+        candidates.append(os.path.join(app_dir, "voices"))
+
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(os.path.join(meipass, "voices"))
+
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates.extend([
+            os.path.join(exe_dir, "voices"),
+            os.path.join(exe_dir, "_internal", "voices"),
+        ])
+
+    source_root = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
+    candidates.append(os.path.join(source_root, "voices"))
+    return list(dict.fromkeys(os.path.normpath(path) for path in candidates))
+
+
+def _discover_voice_files() -> list[str]:
+    found = []
+    seen_paths = set()
+    for directory in _voice_directories():
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory)):
+            if not name.lower().endswith(".wav"):
+                continue
+            path = os.path.join(directory, name)
+            normalized = os.path.normcase(os.path.abspath(path))
+            if normalized not in seen_paths:
+                found.append(path)
+                seen_paths.add(normalized)
+    return found
+
+
+def _infer_custom_gender(key: str) -> str:
+    normalized = key.casefold().replace("-", "_")
+    parts = normalized.split("_")
+    if any(part in ("female", "nu") for part in parts):
+        return "female"
+    if any(part in ("male", "nam") for part in parts):
+        return "male"
+    return "unknown"
 
 
 def _find_custom_path(name: str) -> str | None:

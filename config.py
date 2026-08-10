@@ -12,10 +12,13 @@ def _get_app_root() -> str:
 
 
 def _resolve_output_dir() -> str:
-    raw = os.getenv("OUTPUT_DIR", "./output")
+    app_data_dir = os.getenv("APP_DATA_DIR")
+    default_output = os.path.join(app_data_dir, "output") if app_data_dir else "./output"
+    raw = os.getenv("OUTPUT_DIR", default_output)
     if os.path.isabs(raw):
         return raw
-    return os.path.join(_get_app_root(), raw.lstrip("./\\"))
+    base_dir = app_data_dir or _get_app_root()
+    return os.path.join(base_dir, raw.lstrip("./\\"))
 
 
 # --- Translation providers (fallback chain: OpenAI -> Gemini -> Groq -> OpenRouter -> NLLB offline) ---

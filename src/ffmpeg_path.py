@@ -6,6 +6,26 @@ cuối cùng fallback về "ffmpeg"/"ffprobe" trong PATH.
 """
 import os
 import shutil
+import sys
+from pathlib import Path
+
+
+def _find_bundled_ffmpeg() -> str | None:
+    """Tìm FFmpeg được PyInstaller đặt trong thư mục runtime."""
+    meipass = getattr(sys, "_MEIPASS", None)
+    if not meipass:
+        return None
+
+    roots = [
+        Path(meipass),
+        Path(meipass) / "imageio_ffmpeg" / "binaries",
+    ]
+    for root in roots:
+        for pattern in ("ffmpeg*.exe", "ffmpeg*"):
+            for candidate in root.glob(pattern):
+                if candidate.is_file():
+                    return str(candidate)
+    return None
 
 
 def _resolve(env_name: str, exe_name: str) -> str:
@@ -14,6 +34,9 @@ def _resolve(env_name: str, exe_name: str) -> str:
         return env_val
 
     if exe_name == "ffmpeg":
+        bundled = _find_bundled_ffmpeg()
+        if bundled:
+            return bundled
         try:
             import imageio_ffmpeg
             return imageio_ffmpeg.get_ffmpeg_exe()

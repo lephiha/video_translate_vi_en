@@ -361,7 +361,9 @@ async function loadVoices() {
 function renderVoices(gender) {
   const sel = document.getElementById('voice-select');
   sel.innerHTML = '';
-  const list = ALL_VOICES.filter(v => v.gender === gender);
+  // File clone tự phát hiện có thể chưa khai giới tính; cho hiện ở cả hai tab
+  // để người dùng vẫn chọn được. Đặt tên *_male.wav hoặc *_female.wav để phân tab.
+  const list = ALL_VOICES.filter(v => v.gender === gender || v.gender === 'unknown');
   if (!list.length) { sel.innerHTML = `<option value="">Không có giọng ${gender === 'male' ? 'nam' : 'nữ'}</option>`; return; }
   list.sort((a, b) => (a.kind === 'custom' ? -1 : 0) - (b.kind === 'custom' ? -1 : 0));
   list.forEach(v => {

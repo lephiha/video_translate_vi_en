@@ -21,7 +21,8 @@ import config
 app = FastAPI()
 
 OUTPUT_DIR = config.OUTPUT_DIR
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+APP_DATA_DIR = os.environ.get("APP_DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_DIR = os.path.join(APP_DATA_DIR, "uploads")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 

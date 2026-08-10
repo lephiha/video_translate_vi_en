@@ -17,6 +17,12 @@ if not exist "dist\VideoDubEnVi\VideoDubEnVi.exe" (
     exit /b 1
 )
 
+dir /b /s "dist\VideoDubEnVi\ffmpeg*.exe" >nul 2>nul
+if errorlevel 1 (
+    echo Khong tim thay FFmpeg trong dist - dung build de tranh tao installer bi mat audio.
+    exit /b 1
+)
+
 echo === [2/2] Building installer voi Inno Setup ===
 where iscc >nul 2>nul
 if errorlevel 1 (
