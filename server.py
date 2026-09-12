@@ -67,14 +67,14 @@ async def download_file(path: str):
 
 @app.get("/voices")
 async def get_voices():
-    from fastapi.concurrency import run_in_threadpool
+    from fastapi.responses import JSONResponse
     try:
         from src.synthesizer_vieneu import list_all_voices
-        return await run_in_threadpool(list_all_voices)
+        voices = list_all_voices()
+        return JSONResponse(content=voices)
     except Exception as e:
         logging.getLogger("server").warning(f"Không load được VieNeu voices: {e}")
-        return [{"label": "Giọng mặc định", "voice_id": "manhdung_ref", "kind": "preset",
-                  "sample_id": "preset__manhdung_ref", "gender": "male", "is_default": True}]
+        return JSONResponse(content=[])
 
 
 @app.get("/voices/sample/{sample_id}")

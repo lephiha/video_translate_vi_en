@@ -76,6 +76,88 @@ class CustomVoiceDiscoveryTests(unittest.TestCase):
 
         self.assertIn(("my_clone", "unknown", str(clone)), voices)
 
+    def test_custom_voices_remain_visible_when_preset_engine_fails(self):
+        from src import synthesizer_vieneu
+
+        custom = [("my_clone", "female", "C:/voices/my_clone.wav")]
+        with (
+            mock.patch.object(
+                synthesizer_vieneu,
+                "list_voices",
+                side_effect=RuntimeError("model unavailable"),
+            ),
+            mock.patch.object(
+                synthesizer_vieneu,
+                "list_custom_voices",
+                return_value=custom,
+            ),
+        ):
+            voices = synthesizer_vieneu.list_all_voices()
+
+        self.assertEqual(len(voices), 1)
+        self.assertEqual(voices[0]["voice_id"], "my_clone")
+        self.assertEqual(voices[0]["kind"], "custom")
+
+
+class VieNeuModelCacheTests(unittest.TestCase):
+    def test_partial_download_is_not_treated_as_ready(self):
+        from src import synthesizer_vieneu
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_dir = Path(temp_dir) / synthesizer_vieneu._MODEL_DIRNAME
+            (model_dir / 'blobs').mkdir(parents=True)
+            (model_dir / 'blobs' / 'incomplete').touch()
+
+            self.assertFalse(synthesizer_vieneu.is_model_cache_ready(model_dir))
+
+    def test_complete_snapshot_is_treated_as_ready(self):
+        from src import synthesizer_vieneu
+
+        required_files = (
+            'onnx_int8/config.json',
+            'onnx_int8/tokenizer.json',
+            'onnx_int8/vieneu_acoustic_cached.onnx',
+            'onnx_int8/vieneu_backbone_shared.data',
+            'onnx_int8/vieneu_decode_step.onnx',
+            'onnx_int8/vieneu_prefill.onnx',
+            'onnx_int8/vieneu_v3_heads.npz',
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_dir = Path(temp_dir) / synthesizer_vieneu._MODEL_DIRNAME
+            snapshot = model_dir / 'snapshots' / 'revision'
+            for relative_path in required_files:
+                path = snapshot / relative_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'model-data')
+
+            self.assertTrue(synthesizer_vieneu.is_model_cache_ready(model_dir))
+
+    def test_legacy_onnx_snapshot_is_not_ready_for_current_vieneu(self):
+        from src import synthesizer_vieneu
+
+        legacy_files = (
+            'config.json',
+            'tokenizer.json',
+            'onnx/vieneu_acoustic_cached.onnx',
+            'onnx/vieneu_backbone_shared.data',
+            'onnx/vieneu_decode_step.onnx',
+            'onnx/vieneu_prefill.onnx',
+            'onnx/vieneu_v3_heads.npz',
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            snapshot = (
+                Path(temp_dir)
+                / synthesizer_vieneu._MODEL_DIRNAME
+                / 'snapshots'
+                / 'legacy'
+            )
+            for relative_path in legacy_files:
+                path = snapshot / relative_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'legacy-model-data')
+
+            self.assertFalse(synthesizer_vieneu.is_model_cache_ready(snapshot.parents[1]))
+
 
 class AppIconTests(unittest.TestCase):
     def test_pyinstaller_spec_uses_existing_app_icon(self):

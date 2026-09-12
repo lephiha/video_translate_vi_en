@@ -17,8 +17,22 @@ GHI CHÚ TRIỂN KHAI:
 import logging
 import os
 import sys
+import threading
+from pathlib import Path
 
 logger = logging.getLogger("synthesizer_vieneu")
+
+_MODEL_DIRNAME = "models--pnnbao-ump--VieNeu-TTS-v3-Turbo"
+
+_MODEL_REQUIRED_FILES = (
+    'onnx_int8/config.json',
+    'onnx_int8/tokenizer.json',
+    'onnx_int8/vieneu_acoustic_cached.onnx',
+    'onnx_int8/vieneu_backbone_shared.data',
+    'onnx_int8/vieneu_decode_step.onnx',
+    'onnx_int8/vieneu_prefill.onnx',
+    'onnx_int8/vieneu_v3_heads.npz',
+)
 
 try:
     import config
@@ -27,6 +41,9 @@ except Exception:  # pragma: no cover
 
 MAX_TTS_RETRY = 3
 _engine = None
+_engine_lock = threading.Lock()
+_loading_thread = None
+_load_error = None
 
 
 def _cfg(name: str, default=None):
@@ -37,9 +54,28 @@ def _cfg(name: str, default=None):
     return os.getenv(name, default)
 
 
+def is_model_cache_ready(model_dir: str | os.PathLike[str]) -> bool:
+    '''Return true only for a complete VieNeu Hugging Face snapshot.'''
+    snapshots_dir = Path(model_dir) / 'snapshots'
+    if not snapshots_dir.is_dir():
+        return False
+
+    for snapshot in snapshots_dir.iterdir():
+        if not snapshot.is_dir():
+            continue
+        if all(
+            (snapshot / relative_path).is_file()
+            and (snapshot / relative_path).stat().st_size > 0
+            for relative_path in _MODEL_REQUIRED_FILES
+        ):
+            return True
+    return False
+
+
 def _ensure_hf_cache():
     """Trỏ cache Hugging Face về APP_DATA_DIR để model VieNeu tải 1 lần và
     dùng offline mãi. PHẢI gọi TRƯỚC khi import vieneu."""
+    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "30")
     app_dir = os.environ.get("APP_DATA_DIR")
     if not app_dir:
         return
@@ -48,31 +84,67 @@ def _ensure_hf_cache():
     os.environ.setdefault("HF_HOME", cache)
     os.environ.setdefault("HF_HUB_CACHE", os.path.join(cache, "hub"))
 
+    model_dir = os.path.join(cache, "hub", _MODEL_DIRNAME)
+    if is_model_cache_ready(model_dir):
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
-def get_engine():
-    """Trả về Vieneu engine, nạp 1 lần rồi cache. Lần đầu sẽ tải model từ HF."""
-    global _engine
+
+def get_engine(wait_timeout: float = 30.0):
+    """Trả về Vieneu engine, nạp 1 lần rồi cache.
+
+    Việc load model chạy trong 1 thread nền RIÊNG, chỉ khởi động DUY NHẤT
+    LẦN ĐẦU (singleton qua _loading_thread). Mỗi lần get_engine() được gọi,
+    nó chỉ ĐỢI tối đa wait_timeout giây rồi thôi — không còn treo vô hạn
+    dù thread nền tải chậm/treo bao lâu. Nếu chưa xong, raise TimeoutError
+    rõ ràng thay vì để cả server đứng hình theo.
+    """
+    global _engine, _loading_thread, _load_error
     if _engine is not None:
         return _engine
 
-    _ensure_hf_cache()
-    from vieneu import Vieneu
+    with _engine_lock:
+        if _engine is not None:
+            return _engine
+        if _loading_thread is not None and not _loading_thread.is_alive():
+            # Retry a failed or interrupted first download in the same process.
+            _loading_thread = None
+            _load_error = None
+        if _loading_thread is None:
+            def _load():
+                global _engine, _load_error
+                try:
+                    _ensure_hf_cache()
+                    from vieneu import Vieneu
+                    mode = str(_cfg("VIENEU_MODE", "v3turbo") or "v3turbo").strip()
+                    logger.info(f"Khởi tạo VieNeu engine (mode={mode}) — lần đầu sẽ tải model...")
+                    eng = Vieneu(mode=mode) if (mode and mode != "v3turbo") else Vieneu()
+                    _engine = eng
+                    logger.info("VieNeu engine sẵn sàng.")
+                except Exception as e:
+                    _load_error = e
+                    logger.error(f"Load VieNeu thất bại: {e}", exc_info=True)
 
-    mode = str(_cfg("VIENEU_MODE", "v3turbo") or "v3turbo").strip()
-    logger.info(f"Khởi tạo VieNeu engine (mode={mode}) — lần đầu sẽ tải model...")
-    if mode and mode != "v3turbo":
-        _engine = Vieneu(mode=mode)
-    else:
-        _engine = Vieneu()
-    logger.info("VieNeu engine sẵn sàng.")
-    return _engine
+            _loading_thread = threading.Thread(target=_load, daemon=True)
+            _loading_thread.start()
+
+    _loading_thread.join(timeout=wait_timeout)
+
+    if _engine is not None:
+        return _engine
+    if _load_error is not None:
+        raise RuntimeError(f"VieNeu load lỗi: {_load_error}")
+    raise TimeoutError(
+        f"VieNeu vẫn đang tải model (>{wait_timeout}s) — model vẫn tải "
+        f"ngầm phía sau, thử lại sau ít phút."
+    )
 
 
 def prewarm_vieneu():
     """Gọi lúc server khởi động để tải model sẵn, tránh để người dùng chờ
     lúc lồng tiếng đầu tiên. Trả về True nếu sẵn sàng."""
     try:
-        get_engine()
+        get_engine(wait_timeout=170)
         return True
     except Exception as e:
         logger.error(f"Prewarm VieNeu thất bại: {e}", exc_info=True)
@@ -232,7 +304,15 @@ def list_all_voices() -> list[dict]:
     female_default = _cfg("VIENEU_VOICE_FEMALE", "ngochuyen_ref")
 
     out = []
-    for label, vid in list_voices():
+    try:
+        preset_voices = list_voices()
+    except Exception as exc:
+        # Voice clone là file local, không nên biến mất chỉ vì model/preset chưa
+        # tải được trên máy mới hoặc Hugging Face tạm thời mất kết nối.
+        logger.warning(f"Không tải được danh sách giọng preset: {exc}")
+        preset_voices = []
+
+    for label, vid in preset_voices:
         out.append({
             "label": label, "voice_id": vid, "kind": "preset",
             "sample_id": f"preset__{vid}",

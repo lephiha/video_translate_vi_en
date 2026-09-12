@@ -351,6 +351,7 @@ async function loadVoices() {
   const sel = document.getElementById('voice-select');
   try {
     const res = await fetch('/voices');
+    if (!res.ok) throw new Error(`Server trả lỗi HTTP ${res.status}`);
     ALL_VOICES = await res.json();
     renderVoices(voiceGender);
   } catch (e) {
