@@ -110,10 +110,6 @@ client_secrets.json
 youtube_token.pickle
 apike.txt
 cookies.txt
-first_run_setup.py
-desktop.py
-app.spec
-installer.iss
 
 # AI models
 models/
